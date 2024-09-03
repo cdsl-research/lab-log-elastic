@@ -1,0 +1,55 @@
+replicas: 3
+minimumMasterNodes: 1
+clusterHealthCheckParams: 'wait_for_status=yellow&timeout=10s'
+persistence:
+  ## @param persistence.enabled Enable persistence using Persistent Volume Claims
+  ##
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  dataSource: {}
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+antiAffinity: "soft"
+esJavaOpts: "-Xmx8g -Xms8g"
+resources:
+  requests:
+    cpu: "1"
+    memory: "13Gi"
+  limits:
+    cpu: "1"
+    memory: "13Gi"
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  successThreshold: 3
+  timeoutSeconds: 5
+protocol: http
+httpPort: 9200
+transportPort: 9300
+service:
+  type: NodePort
+  ports:
+    - port: 9200
+      nodePort: 31895
+    - port: 9300
+      nodePort: 31678
+
+# Secret Configuration
+secret:
+  create: true
+  name: elasticsearch-master-credentials
+  data:
+    ELASTIC_PASSWORD: "XXTMUOQMWweyIC3h"
+    ELASTIC_USERNAME: "elastic"
+esConfig:
+  elasticsearch.yml: |
+      xpack.security.enabled: false
+      xpack.security.audit.enabled: false
+      xpack.security.transport.ssl.enabled: false
+createCert: false

@@ -1,0 +1,13 @@
+elasticsearchHosts: "http://elasticsearch-master:9200"
+replicas: 1
+service:
+  type: NodePort
+  port: 5601
+  nodePort: 30110
+resources:
+  requests:
+    cpu: "300m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"

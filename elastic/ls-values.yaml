@@ -1,0 +1,44 @@
+logstashJavaOpts: "-Xmx1g -Xms1g"
+resources:
+  requests:
+    cpu: "100m"
+    memory: "1536Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1536Mi"
+persistence:
+  enabled: True
+extraPorts:
+  - name: beats
+    containerPort: 5044
+service:
+  type: NodePort
+  ports:
+    - name: beats
+      port: 5044
+      protocol: TCP
+      nodePort: 30714
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.monitoring.enabled: false
+    # pipeline.ecs.compatibility: disabled
+logstashPipeline:
+  logstash.conf: |
+    input {
+      beats { port => 5044 }
+    }
+    filter {
+      fingerprint {
+        source => ["message"]
+        target => "[@metadata][fingerprint]"
+        method => "SHA256"
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch-master:9200"]
+        index => "%{[fields][index]}"
+        document_id => "%{[@metadata][fingerprint]}"
+      }
+    }

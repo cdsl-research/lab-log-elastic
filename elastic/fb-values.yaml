@@ -1,0 +1,44 @@
+extraEnvs: []
+daemonset:
+  filebeatConfig:
+    filebeat.yml: |
+      logging.level: error
+      filebeat.autodiscover:
+        providers:
+          - type: kubernetes
+            node: ${NODE_NAME}
+            hints.enabled: true
+            hints.default_config:
+              type: container
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+              fields:
+                index: logstash
+          - type: kubernetes
+            node: worker-node-label
+            hints.enabled: true
+            hints.default_config:
+              type: container
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+              fields:
+                index: logstash
+          - type: kubernetes
+            hints.enabled: true
+            hints.default_config:
+              type: container
+              paths:
+                - /var/log/containers/*.log
+              fields:
+                index: logstash
+      output.logstash:
+        hosts: ["ls-logstash:5044"]
+      setup.template:
+        name: "k8s"
+        pattern: "k8s-*"
+        enabled: false
+      setup.ilm.enabled: false
+  secretMounts: []
+  deployment:
+    extraEnvs: []
+    annotations: {}
