@@ -45,8 +45,8 @@ secret:
   create: true
   name: elasticsearch-master-credentials
   data:
-    ELASTIC_PASSWORD: "XXTMUOQMWweyIC3h"
-    ELASTIC_USERNAME: "elastic"
+    ELASTIC_PASSWORD: "***"
+    ELASTIC_USERNAME: "***"
 esConfig:
   elasticsearch.yml: |
       xpack.security.enabled: false
