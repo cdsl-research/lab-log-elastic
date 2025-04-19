@@ -1,11 +1,11 @@
 replicas: 3
-minimumMasterNodes: 1
+minimumMasterNodes: 2
 clusterHealthCheckParams: 'wait_for_status=yellow&timeout=10s'
 persistence:
   ## @param persistence.enabled Enable persistence using Persistent Volume Claims
   ##
   enabled: true
-  storageClass: ""
+  storageClass: "nfs-client"
   accessModes:
     - ReadWriteOnce
   dataSource: {}
@@ -13,9 +13,9 @@ volumeClaimTemplate:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 10Gi
-antiAffinity: "soft"
-esJavaOpts: "-Xmx2g -Xms2g"
+      storage: 20Gi
+antiAffinity: "hard"
+esJavaOpts: "-Xmx5g -Xms5g"
 resources:
   requests:
     cpu: "1"
@@ -36,9 +36,9 @@ service:
   type: NodePort
   ports:
     - port: 9200
-      nodePort: 31895
+      nodePort: 30092
     - port: 9300
-      nodePort: 31678
+      nodePort: 30093
 
 # Secret Configuration
 secret:
