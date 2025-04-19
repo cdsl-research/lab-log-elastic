@@ -2,10 +2,10 @@ logstashJavaOpts: "-Xmx1g -Xms1g"
 resources:
   requests:
     cpu: "100m"
-    memory: "1536Mi"
+    memory: "1Gi"
   limits:
     cpu: "1000m"
-    memory: "1536Mi"
+    memory: "1Gi"
 persistence:
   enabled: True
 extraPorts:
@@ -14,31 +14,110 @@ extraPorts:
 service:
   type: NodePort
   ports:
+    - name: syslog
+      port: 5140
+      protocol: UDP
+      nodePort: 31514
     - name: beats
       port: 5044
       protocol: TCP
-      nodePort: 30714
+      nodePort: 30544
 logstashConfig:
   logstash.yml: |
     http.host: 0.0.0.0
     xpack.monitoring.enabled: false
-    # pipeline.ecs.compatibility: disabled
 logstashPipeline:
   logstash.conf: |
     input {
-      beats { port => 5044 }
-    }
-    filter {
-      fingerprint {
-        source => ["message"]
-        target => "[@metadata][fingerprint]"
-        method => "SHA256"
+      syslog {
+        port => 5140
+        add_field => { "[@metadata][input_id]" => "syslog_input" }
+      }
+      beats {
+        port => 5044
+        add_field => { "[@metadata][input_id]" => "beats_input" }
       }
     }
+
+    filter {
+      if [@metadata][input_id] == "syslog_input" {
+        mutate {
+          replace => { "[@metadata][index_prefix]" => "syslog" }
+        }
+
+        grok {
+          match => {
+            "message" => "%{SYSLOG5424LINE}"
+          }
+          overwrite => [ "message" ]
+          tag_on_failure => ["syslog_parse_failed"]
+        }
+
+        if "syslog_parse_failed" in [tags] {
+          grok {
+            match => {
+              "message" => "<%{POSINT:syslog_pri}>%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_host} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}"
+            }
+            overwrite => [ "message" ]
+            remove_tag => ["syslog_parse_failed"]
+            tag_on_failure => ["syslog_rfc3164_failed"]
+          }
+        }
+
+        date {
+          match => [ "syslog_timestamp", "ISO8601", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+          target => "@timestamp"
+        }
+      }
+      else if [@metadata][input_id] == "beats_input" {
+        if "weblog" in [tags] {
+          mutate {
+            replace => { "[@metadata][index_prefix]" => "weblog" }
+          }
+
+          grok {
+            match => { "message" => "%{HTTPD_COMBINEDLOG}" }
+            overwrite => [ "message" ]
+            tag_on_failure => ["weblog_parse_failed"]
+          }
+
+          date {
+            match => [ "timestamp", "dd/MMM/yyyy:HH:mm:ss Z" ]
+            target => "@timestamp"
+          }
+
+          if "access_log" in [tags] {
+            dissect {
+              mapping => {
+                "[log][file][path]" => "%{path}/access.%{domain}.log.1"
+              }
+            }
+          }
+          if "error_log" in [tags] {
+            dissect {
+              mapping => {
+                "[log][file][path]" => "%{path}/error.%{domain}.log.1"
+              }
+            }
+          }
+        }
+        else {
+          mutate {
+            replace => { "[@metadata][index_prefix]" => "beats" }
+          }
+        }
+      }
+      else {
+        mutate {
+          add_field => { "[@metadata][index_prefix]" => "default" }
+        }
+      }
+    }
+
     output {
+      # stdout { codec => rubydebug }
       elasticsearch {
         hosts => ["http://elasticsearch-master:9200"]
-        index => "%{[fields][index]}"
-        document_id => "%{[@metadata][fingerprint]}"
+        index => "%{[@metadata][index_prefix]}-%{+YYYY.MM.dd}"
       }
     }
