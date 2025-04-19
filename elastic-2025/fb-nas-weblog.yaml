@@ -1,0 +1,34 @@
+daemonset:
+  enabled: false
+deployment:
+  enabled: true
+  filebeatConfig:
+    filebeat.yml: |
+      filebeat.registry.path: /mnt/nfs-logs/filebeat_registry_path
+      filebeat.inputs:
+        - type: log
+          enabled: true
+          tags: ["weblog", "access_log"]
+          paths:
+            - /mnt/nfs-logs/log-backup-*/*.log.1
+          scan_frequency: 10s
+          tail_files: false
+        - type: log
+          enabled: true
+          tags: ["weblog", "error_log"]
+          paths:
+            - /mnt/nfs-logs/log-error-backup-*/*.log.1
+          scan_frequency: 10s
+          tail_files: false
+      output.logstash:
+        hosts: ["ls-logstash.elastic.svc.cluster.local:5044"]
+  secretMounts: []
+  extraVolumes:
+    - name: nfs-logs
+      nfs:
+        server: 192.168.100.3
+        path: /volume1/cdsl-vm-2-nginx-log-backup
+  extraVolumeMounts:
+    - name: nfs-logs
+      mountPath: /mnt/nfs-logs
+replicas: 1
