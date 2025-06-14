@@ -1,0 +1,36 @@
+daemonset:
+  secretMounts: []
+  filebeatConfig:
+    filebeat.yml: |
+      logging.level: info
+      filebeat.autodiscover:
+        providers:
+          - type: kubernetes
+            node: ${NODE_NAME}
+            hints.enabled: true
+            hints.default_config:
+              type: container
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+      processors:
+        - add_tags:
+            tags: [monitoring]
+      filebeat.inputs:
+        - type: filestream
+          paths:
+            - /var/log/syslog
+          include_lines:
+            - 'kubelet'
+          tags:
+            - kubelet
+      output.logstash:
+        hosts: ["ls-master.a910.tak-cslab.org:30544"]
+      setup.ilm.enabled: false
+  resources:
+    limits:
+      memory: 300Mi
+      cpu: 0.5
+    requests:
+      memory: 300Mi
+      cpu: 0.5
+~
