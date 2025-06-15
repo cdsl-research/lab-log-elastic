@@ -33,4 +33,3 @@ daemonset:
     requests:
       memory: 300Mi
       cpu: 0.5
-~
