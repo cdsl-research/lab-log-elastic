@@ -101,6 +101,17 @@ logstashPipeline:
             }
           }
         }
+        else if "c0a22069-log-collector-2" in [tags] {
+          grok{
+            match => {
+          "message" => '\[%{TIMESTAMP_ISO8601:log_time}\] "%{WORD:method} %{DATA:uri} HTTP/%{NUMBER:http_version}" %{NUMBER:status_code:int} %{GREEDYDATA:rest}'
+            }
+            tag_on_failure => [istio_http_parse]
+          }
+          mutate {
+            replace => { "[@metadata][index_prefix]" => "doktor-istio" }
+          }
+        }
         else {
           mutate {
             replace => { "[@metadata][index_prefix]" => "beats" }
@@ -120,4 +131,4 @@ logstashPipeline:
         hosts => ["http://elasticsearch-master:9200"]
         index => "%{[@metadata][index_prefix]}-%{+YYYY.MM.dd}"
       }
-    }
+      }
